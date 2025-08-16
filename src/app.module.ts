@@ -3,7 +3,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './health/health.module';
-import { AppConfigModule } from './config/config.module';
+import { AppConfigModule } from './config/app-config.module';
 import { StorageModule } from './storage/storage.module';
 
 @Module({

@@ -1,12 +1,16 @@
 import { Controller, Get } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import Redis from 'ioredis';
+import { StorageService } from '../storage/storage.service';
 
 @Controller('health')
 export class HealthController {
   private redis?: Redis;
 
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storage: StorageService,
+  ) {
     const url = process.env.REDIS_URL;
     if (url) this.redis = new Redis(url, { lazyConnect: true });
   }
@@ -16,15 +20,16 @@ export class HealthController {
     const checks: Record<string, string> = {};
     let dbOk = false;
 
+    // DB
     try {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-      await this.prisma.$connect();
+      await this.prisma.$queryRaw`SELECT 1`;
       dbOk = true;
       checks.db = 'ok';
     } catch {
       checks.db = 'down';
     }
 
+    // Redis
     if (this.redis) {
       try {
         await this.redis.connect();
@@ -43,14 +48,25 @@ export class HealthController {
       checks.redis = 'skipped';
     }
 
-    // TODO: add MinIO readiness (need AWS SDK S3 client) — phase 0 backlog
-    checks.minio = 'todo';
+    // MinIO / S3
+    try {
+      const ok = await this.storage.checkBucket();
+      checks.minio = ok ? 'ok' : 'down';
+    } catch {
+      checks.minio = 'down';
+    }
+
+    const statusOk =
+      dbOk &&
+      (checks.redis === 'ok' || checks.redis === 'skipped') &&
+      (checks.minio === 'ok' || checks.minio === 'down'); // minio down = degraded
 
     return {
-      status:
-        dbOk && (checks.redis === 'ok' || checks.redis === 'skipped')
+      status: statusOk
+        ? checks.minio === 'ok'
           ? 'ok'
-          : 'degraded',
+          : 'degraded'
+        : 'degraded',
       checks,
       uptime: process.uptime(),
       timestamp: new Date().toISOString(),

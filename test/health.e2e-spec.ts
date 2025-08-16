@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
@@ -20,9 +22,9 @@ describe('Health (e2e)', () => {
   });
 
   it('/health (GET)', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     const res = await request(app.getHttpServer()).get('/health').expect(200);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+
     expect(['ok', 'degraded']).toContain(res.body.status);
+    expect(['ok', 'down']).toContain(res.body.checks.minio);
   });
 });
