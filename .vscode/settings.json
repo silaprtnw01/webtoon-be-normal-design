@@ -1,0 +1,21 @@
+{
+    // บังคับบันทึกไฟล์เป็น LF เสมอ
+    "files.eol": "\n",
+  
+    // ช่วยให้เห็นช่องว่าง/บรรทัดใหม่เวลามี CRLF ปะปน
+    "editor.renderWhitespace": "trailing",
+    "files.insertFinalNewline": true,
+  
+    // ให้ Prettier จัดรูปแบบทุกครั้งที่บันทึก
+    "editor.formatOnSave": true,
+  
+    // ตั้งค่า default formatter (ถ้าใช้ Prettier)
+    "[javascript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+    "[typescript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+    "[json]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+    "[markdown]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  
+    // กันกรณีที่ VS Code/OS พยายามเดา EOL ตามไฟล์เดิม
+    "prettier.endOfLine": "lf"
+  }
+  

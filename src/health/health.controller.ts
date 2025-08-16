@@ -4,6 +4,8 @@ import Redis from 'ioredis';
 import { StorageService } from '../storage/storage.service';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { HealthResponseDto, ReadinessResponseDto } from './dto/health.dto';
+import { VersionResponseDto } from './dto/version.dto';
+import { AppInfoService } from '../config/app-info.service';
 
 @ApiTags('Health')
 @Controller('health')
@@ -13,6 +15,7 @@ export class HealthController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
+    private readonly appInfo: AppInfoService,
   ) {
     const url = process.env.REDIS_URL;
     if (url) this.redis = new Redis(url, { lazyConnect: true });
@@ -91,6 +94,17 @@ export class HealthController {
       status: dbOk ? ('ready' as const) : ('not_ready' as const),
       checks: { db: dbOk ? 'ok' : 'down' },
       timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Get('version')
+  @ApiOkResponse({ type: VersionResponseDto })
+  version(): VersionResponseDto {
+    const info = this.appInfo.getInfo();
+    return {
+      name: info.name,
+      version: info.version,
+      nodeEnv: info.nodeEnv as any,
     };
   }
 }

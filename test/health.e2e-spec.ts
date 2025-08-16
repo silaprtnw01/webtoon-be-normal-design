@@ -35,4 +35,13 @@ describe('Health (e2e)', () => {
     expect(['ready', 'not_ready']).toContain(res.body.status);
     expect(['ok', 'down']).toContain(res.body.checks.db);
   });
+
+  it('/health/version (GET)', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/health/version')
+      .expect(200);
+    expect(typeof res.body.name).toBe('string');
+    expect(typeof res.body.version).toBe('string');
+    expect(['development', 'test', 'production']).toContain(res.body.nodeEnv);
+  });
 });

@@ -26,6 +26,9 @@ export class AppConfigService {
   get port() {
     return this.env.PORT;
   }
+  get publicBaseUrl() {
+    return this.env.PUBLIC_BASE_URL;
+  }
   get databaseUrl() {
     return this.env.DATABASE_URL;
   }

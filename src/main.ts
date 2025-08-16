@@ -20,17 +20,23 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
-  const swaggerConfig = new DocumentBuilder()
+  const swaggerBuilder = new DocumentBuilder()
     .setTitle('Webtoon Platform API')
     .setDescription('Backend API docs')
     .setVersion('0.1.0')
-    .addCookieAuth('refresh_token', { type: 'apiKey', in: 'cookie' })
-    .build();
+    .addCookieAuth('refresh_token', { type: 'apiKey', in: 'cookie' });
 
+  // Servers
+  swaggerBuilder.addServer(`http://localhost:${config.port}`, 'Local Dev');
+  if (config.publicBaseUrl) {
+    swaggerBuilder.addServer(config.publicBaseUrl, 'Public Base URL');
+  }
+
+  const swaggerConfig = swaggerBuilder.build();
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('docs', app, document);
 
   await app.listen(config.port);
-  console.log(`API ready on http://localhost:${config.port} (docs at /docs)`);
+  console.log(`API on http://localhost:${config.port} (docs: /docs)`);
 }
 void bootstrap();
