@@ -27,4 +27,12 @@ describe('Health (e2e)', () => {
     expect(['ok', 'degraded']).toContain(res.body.status);
     expect(['ok', 'down']).toContain(res.body.checks.minio);
   });
+
+  it('/health/readiness (GET)', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/health/readiness')
+      .expect(200);
+    expect(['ready', 'not_ready']).toContain(res.body.status);
+    expect(['ok', 'down']).toContain(res.body.checks.db);
+  });
 });
