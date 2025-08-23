@@ -19,6 +19,7 @@ export class RolesGuard implements CanActivate {
       ctx.getHandler(),
       ctx.getClass(),
     ]);
+
     if (!required || required.length === 0) return true;
     const have = new Set(user?.roles ?? []);
     return required.some((r) => have.has(r));

@@ -25,7 +25,8 @@ import { GoogleStrategy } from './google.strategy';
     AuthService,
     JwtStrategy,
     RolesGuard,
-    { provide: APP_GUARD, useClass: ThrottlerGuard }, // rate-limit login/refresh
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+
     GoogleStrategy,
   ],
   controllers: [AuthController],

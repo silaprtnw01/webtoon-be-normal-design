@@ -38,6 +38,20 @@ export class AuthService {
     return argon2.hash(rnd, { type: argon2.argon2id });
   }
 
+  /** Ensure มี role 'user' และผูกให้ user (idempotent) */
+  private async ensureDefaultUserRole(userId: string) {
+    const userRole = await this.prisma.role.upsert({
+      where: { code: 'user' },
+      update: {},
+      create: { code: 'user' },
+    });
+    await this.prisma.userRole.upsert({
+      where: { userId_roleId: { userId, roleId: userRole.id } },
+      update: {},
+      create: { userId, roleId: userRole.id },
+    });
+  }
+
   private async issueTokens(ctx: IssueContext) {
     const access = await this.jwt.signAsync(
       { sub: ctx.userId, sid: ctx.sessionId, roles: ctx.roles },
@@ -46,6 +60,7 @@ export class AuthService {
         expiresIn: this.cfg.jwt.accessTtlSec,
       },
     );
+
     // refresh jti row
     const jtiRow = await this.prisma.refreshToken.create({
       data: {
@@ -53,6 +68,7 @@ export class AuthService {
         expiresAt: addDays(new Date(), this.cfg.jwt.refreshTtlDays),
       },
     });
+
     const refresh = await this.jwt.signAsync(
       { sub: ctx.userId, sid: ctx.sessionId, jti: jtiRow.id },
       {
@@ -60,6 +76,7 @@ export class AuthService {
         expiresIn: `${this.cfg.jwt.refreshTtlDays}d`,
       },
     );
+
     return { access, refresh, jti: jtiRow.id };
   }
 
@@ -82,8 +99,14 @@ export class AuthService {
   ) {
     const exists = await this.users.findByEmail(email);
     if (exists) throw new ForbiddenException('email_taken');
+
+    // สร้างผู้ใช้ใหม่
     const user = await this.users.create(email, password, displayName);
 
+    // ผูก role เริ่มต้น 'user'
+    await this.ensureDefaultUserRole(user.id);
+
+    // สร้าง session + log
     const session = await this.prisma.session.create({
       data: {
         userId: user.id,
@@ -103,12 +126,14 @@ export class AuthService {
       },
     });
 
+    // โหลด roles ล่าสุด แล้วออก token
     const roles = (
       await this.prisma.userRole.findMany({
         where: { userId: user.id },
         include: { role: true },
       })
     ).map((r) => r.role.code);
+
     return this.issueTokens({ userId: user.id, sessionId: session.id, roles });
   }
 
@@ -149,6 +174,7 @@ export class AuthService {
         include: { role: true },
       })
     ).map((r) => r.role.code);
+
     return this.issueTokens({ userId: user.id, sessionId: session.id, roles });
   }
 
@@ -158,34 +184,36 @@ export class AuthService {
   ) {
     const existingAccount = await this.prisma.accountProvider.findUnique({
       where: {
-        // Prisma composite unique (depends on schema naming)
         provider_providerId: {
           provider: 'google',
           providerId: profile.providerId,
         },
       },
     });
-    let user = existingAccount
-      ? await this.prisma.user.findUnique({
-          where: { id: existingAccount.userId },
-        })
-      : undefined;
+
+    let userId: string | undefined;
+    if (existingAccount) {
+      const u = await this.prisma.user.findUnique({
+        where: { id: existingAccount.userId },
+      });
+      if (u) userId = u.id;
+    }
 
     // Link by email if exists
-    if (!user && profile.email) {
+    if (!userId && profile.email) {
       const byEmail = await this.users.findByEmail(profile.email);
       if (byEmail) {
-        user = byEmail as any;
+        userId = byEmail.id;
         await this.prisma.accountProvider.create({
           data: {
-            userId: (user as any).id,
+            userId,
             provider: 'google',
             providerId: profile.providerId,
           },
         });
         await this.prisma.auditLog.create({
           data: {
-            userId: (user as any).id,
+            userId,
             action: 'LINK_ACCOUNT',
             userAgent: client.ua,
             ip: client.ip,
@@ -195,12 +223,12 @@ export class AuthService {
     }
 
     // Create new user if allowed
-    if (!user) {
+    if (!userId) {
       if (!this.cfg.oauthAllowSignup) {
         throw new UnauthorizedException('signup_disabled');
       }
       const passwordHash = await this.randomPasswordHash();
-      user = await this.prisma.user.create({
+      const created = await this.prisma.user.create({
         data: {
           email: (
             profile.email ?? `google_${profile.providerId}@example.invalid`
@@ -209,16 +237,21 @@ export class AuthService {
           displayName: profile.displayName,
         },
       });
+      userId = created.id;
+
+      // Role เริ่มต้น 'user' สำหรับผู้ใช้ใหม่จาก Google
+      await this.ensureDefaultUserRole(userId);
+
       await this.prisma.accountProvider.create({
         data: {
-          userId: (user as any).id,
+          userId,
           provider: 'google',
           providerId: profile.providerId,
         },
       });
       await this.prisma.auditLog.create({
         data: {
-          userId: (user as any).id,
+          userId,
           action: 'REGISTER',
           userAgent: client.ua,
           ip: client.ip,
@@ -226,17 +259,23 @@ export class AuthService {
       });
     }
 
+    if (!userId) {
+      throw new UnauthorizedException('oauth_user_missing');
+    }
+    const finalUserId: string = userId;
+
     const session = await this.prisma.session.create({
       data: {
-        userId: (user as any).id,
+        userId: finalUserId,
         ip: client.ip,
         userAgent: client.ua,
         deviceId: client.deviceId,
       },
     });
+
     await this.prisma.auditLog.create({
       data: {
-        userId: (user as any).id,
+        userId: finalUserId,
         sessionId: session.id,
         action: 'LOGIN',
         ip: client.ip,
@@ -246,12 +285,13 @@ export class AuthService {
 
     const roles = (
       await this.prisma.userRole.findMany({
-        where: { userId: (user as any).id },
+        where: { userId: finalUserId },
         include: { role: true },
       })
     ).map((r) => r.role.code);
+
     return this.issueTokens({
-      userId: (user as any).id,
+      userId: finalUserId,
       sessionId: session.id,
       roles,
     });
@@ -271,6 +311,7 @@ export class AuthService {
       sid: sessionId,
       jti,
     } = payload as { sub: string; sid: string; jti: string };
+
     const tokenRow = await this.prisma.refreshToken.findUnique({
       where: { id: jti },
     });
@@ -280,7 +321,6 @@ export class AuthService {
 
     // reuse detection
     if (!tokenRow || !session || session.revokedAt) {
-      // ไม่มี token / session ถูก revoke → ถือเป็น reuse
       await this.prisma.session.updateMany({
         where: { id: sessionId },
         data: { revokedAt: new Date() },
@@ -297,7 +337,6 @@ export class AuthService {
       throw new UnauthorizedException('refresh_reuse_detected');
     }
     if (tokenRow.rotatedAt || tokenRow.revokedAt) {
-      // ใช้ซ้ำ
       await this.prisma.session.update({
         where: { id: sessionId },
         data: { revokedAt: new Date() },
@@ -328,11 +367,13 @@ export class AuthService {
         include: { role: true },
       })
     ).map((r) => r.role.code);
+
     const {
       access,
       refresh,
       jti: newJti,
     } = await this.issueTokens({ userId, sessionId, roles });
+
     await this.prisma.refreshToken.update({
       where: { id: jti },
       data: { rotatedAt: new Date(), replacedById: newJti },
@@ -342,6 +383,7 @@ export class AuthService {
       where: { id: sessionId },
       data: { lastUsedAt: new Date() },
     });
+
     await this.prisma.auditLog.create({
       data: {
         userId,
