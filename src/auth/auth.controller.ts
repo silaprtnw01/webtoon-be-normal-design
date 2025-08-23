@@ -31,6 +31,7 @@ import { AccessTokenResponseDto } from './dto/access-token.dto';
 import { OkResponseDto } from './dto/ok.dto';
 import { SessionsResponseDto } from './dto/session.dto';
 import { MeResponseDto } from './dto/me.dto';
+import { ProvidersResponseDto } from './dto/providers.dto';
 //import { Throttle } from '@nestjs/throttler';
 
 @ApiTags('Auth')
@@ -263,5 +264,37 @@ export class AuthController {
     );
     this.setRefreshCookie(res, refresh);
     return { accessToken: access, method: 'google' };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('sessions/revoke-others')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Revoke all other sessions',
+    description:
+      'ปิด session ทั้งหมด **ยกเว้น** session ปัจจุบัน (จาก access token ที่ใช้เรียก)',
+  })
+  @ApiOkResponse({ type: OkResponseDto })
+  async revokeOthers(@Req() req: Request) {
+    const user = (req as any).user as { sub: string; sid: string };
+    await this.auth.revokeOtherSessions(user.sub, user.sid, {
+      ip: req.ip,
+      ua: req.headers['user-agent'] as string,
+    });
+    return { ok: true };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('providers')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'List linked OAuth providers',
+    description: 'ตอนนี้อ่านอย่างเดียว (unlink จะทำทีหลัง)',
+  })
+  @ApiOkResponse({ type: ProvidersResponseDto })
+  async providers(@Req() req: Request) {
+    const user = (req as any).user as { sub: string };
+    const providers = await this.auth.listProviders(user.sub);
+    return { providers };
   }
 }
