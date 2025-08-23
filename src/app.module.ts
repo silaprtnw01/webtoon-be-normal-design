@@ -7,6 +7,7 @@ import { AppConfigModule } from './config/app-config.module';
 import { StorageModule } from './storage/storage.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { AuthModule } from './auth/auth.module';
     StorageModule,
     UsersModule,
     AuthModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],

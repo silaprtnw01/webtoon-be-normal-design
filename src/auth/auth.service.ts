@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import * as argon2 from 'argon2';
+import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { AppConfigService } from '../config/app-config.service';
@@ -30,6 +31,11 @@ export class AuthService {
       typeof (value as any).id === 'string' &&
       typeof (value as any).passwordHash === 'string'
     );
+  }
+
+  private randomPasswordHash() {
+    const rnd = crypto.randomBytes(24).toString('hex');
+    return argon2.hash(rnd, { type: argon2.argon2id });
   }
 
   private async issueTokens(ctx: IssueContext) {
@@ -144,6 +150,111 @@ export class AuthService {
       })
     ).map((r) => r.role.code);
     return this.issueTokens({ userId: user.id, sessionId: session.id, roles });
+  }
+
+  async googleLogin(
+    profile: { providerId: string; email?: string; displayName: string },
+    client: { ip?: string; ua?: string; deviceId?: string },
+  ) {
+    const existingAccount = await this.prisma.accountProvider.findUnique({
+      where: {
+        // Prisma composite unique (depends on schema naming)
+        provider_providerId: {
+          provider: 'google',
+          providerId: profile.providerId,
+        },
+      },
+    });
+    let user = existingAccount
+      ? await this.prisma.user.findUnique({
+          where: { id: existingAccount.userId },
+        })
+      : undefined;
+
+    // Link by email if exists
+    if (!user && profile.email) {
+      const byEmail = await this.users.findByEmail(profile.email);
+      if (byEmail) {
+        user = byEmail as any;
+        await this.prisma.accountProvider.create({
+          data: {
+            userId: (user as any).id,
+            provider: 'google',
+            providerId: profile.providerId,
+          },
+        });
+        await this.prisma.auditLog.create({
+          data: {
+            userId: (user as any).id,
+            action: 'LINK_ACCOUNT',
+            userAgent: client.ua,
+            ip: client.ip,
+          },
+        });
+      }
+    }
+
+    // Create new user if allowed
+    if (!user) {
+      if (!this.cfg.oauthAllowSignup) {
+        throw new UnauthorizedException('signup_disabled');
+      }
+      const passwordHash = await this.randomPasswordHash();
+      user = await this.prisma.user.create({
+        data: {
+          email: (
+            profile.email ?? `google_${profile.providerId}@example.invalid`
+          ).toLowerCase(),
+          passwordHash,
+          displayName: profile.displayName,
+        },
+      });
+      await this.prisma.accountProvider.create({
+        data: {
+          userId: (user as any).id,
+          provider: 'google',
+          providerId: profile.providerId,
+        },
+      });
+      await this.prisma.auditLog.create({
+        data: {
+          userId: (user as any).id,
+          action: 'REGISTER',
+          userAgent: client.ua,
+          ip: client.ip,
+        },
+      });
+    }
+
+    const session = await this.prisma.session.create({
+      data: {
+        userId: (user as any).id,
+        ip: client.ip,
+        userAgent: client.ua,
+        deviceId: client.deviceId,
+      },
+    });
+    await this.prisma.auditLog.create({
+      data: {
+        userId: (user as any).id,
+        sessionId: session.id,
+        action: 'LOGIN',
+        ip: client.ip,
+        userAgent: client.ua,
+      },
+    });
+
+    const roles = (
+      await this.prisma.userRole.findMany({
+        where: { userId: (user as any).id },
+        include: { role: true },
+      })
+    ).map((r) => r.role.code);
+    return this.issueTokens({
+      userId: (user as any).id,
+      sessionId: session.id,
+      roles,
+    });
   }
 
   async refresh(oldRefreshJwt: string, client: { ip?: string; ua?: string }) {

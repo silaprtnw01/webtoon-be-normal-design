@@ -20,23 +20,31 @@ export class AppConfigService {
     this.env = parsed.data;
   }
 
+  // Runtime
   get nodeEnv() {
     return this.env.NODE_ENV;
   }
   get port() {
     return this.env.PORT;
   }
+
+  // Web
   get publicBaseUrl() {
     return this.env.PUBLIC_BASE_URL;
   }
+  get corsOrigin() {
+    return this.env.CORS_ORIGIN;
+  }
+  get cookieDomain() {
+    return this.env.COOKIE_DOMAIN;
+  }
+
+  // Data Stores
   get databaseUrl() {
     return this.env.DATABASE_URL;
   }
   get redisUrl() {
     return this.env.REDIS_URL;
-  }
-  get corsOrigin() {
-    return this.env.CORS_ORIGIN;
   }
   get minio() {
     return {
@@ -46,6 +54,8 @@ export class AppConfigService {
       bucket: this.env.MINIO_BUCKET,
     };
   }
+
+  // Auth
   get jwt() {
     return {
       accessSecret: this.env.ACCESS_TOKEN_SECRET,
@@ -54,7 +64,21 @@ export class AppConfigService {
       refreshTtlDays: this.env.REFRESH_TOKEN_TTL_DAYS,
     };
   }
-  get cookieDomain() {
-    return this.env.COOKIE_DOMAIN;
+
+  // OAuth
+  get google() {
+    return {
+      clientId: this.env.GOOGLE_CLIENT_ID,
+      clientSecret: this.env.GOOGLE_CLIENT_SECRET,
+      callbackUrl: this.env.GOOGLE_CALLBACK_URL,
+    };
+  }
+  get oauthAllowSignup() {
+    return this.env.OAUTH_ALLOW_SIGNUP;
+  }
+
+  // Admin
+  get adminEmail() {
+    return this.env.ADMIN_EMAIL;
   }
 }

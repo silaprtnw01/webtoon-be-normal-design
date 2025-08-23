@@ -10,6 +10,7 @@ import { RolesGuard } from './roles.guard';
 import { PrismaModule } from '../prisma/prisma.module';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { GoogleStrategy } from './google.strategy';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { APP_GUARD } from '@nestjs/core';
     JwtStrategy,
     RolesGuard,
     { provide: APP_GUARD, useClass: ThrottlerGuard }, // rate-limit login/refresh
+    GoogleStrategy,
   ],
   controllers: [AuthController],
 })

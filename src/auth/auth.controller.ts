@@ -177,14 +177,33 @@ export class AuthController {
     return { ...profile, roles };
   }
 
-  // ---- STUB Google OAuth (TODO) ----
+  // ---- Google OAuth ----
   @Get('google')
-  googleStart() {
-    return { todo: 'Use passport-google-oauth20 in next step' };
+  @UseGuards(AuthGuard('google'))
+  async googleStart() {
+    /* passport redirect */
   }
 
   @Get('google/callback')
-  googleCallback() {
-    return { todo: 'Handle Google callback, link account, audit log' };
+  @UseGuards(AuthGuard('google'))
+  async googleCallback(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const u = (req as any).user; // { provider, providerId, email, displayName }
+    const { access, refresh } = await this.auth.googleLogin(
+      {
+        providerId: u.providerId,
+        email: u.email,
+        displayName: u.displayName,
+      },
+      {
+        ip: req.ip,
+        ua: req.headers['user-agent'] as string,
+        deviceId: req.headers['x-device-id'] as string,
+      },
+    );
+    this.setRefreshCookie(res, refresh);
+    return { accessToken: access, method: 'google' };
   }
 }
