@@ -7,7 +7,7 @@ import {
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { Roles, RolesGuard } from '../auth/roles.guard';
-import { OkResponseDto } from 'src/auth/dto/ok.dto';
+import { OkResponseDto } from '../auth/dto/ok.dto';
 
 @ApiTags('Admin')
 @ApiBearerAuth()

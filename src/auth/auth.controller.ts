@@ -275,6 +275,7 @@ export class AuthController {
       'ปิด session ทั้งหมด **ยกเว้น** session ปัจจุบัน (จาก access token ที่ใช้เรียก)',
   })
   @ApiOkResponse({ type: OkResponseDto })
+  @HttpCode(200)
   async revokeOthers(@Req() req: Request) {
     const user = (req as any).user as { sub: string; sid: string };
     await this.auth.revokeOtherSessions(user.sub, user.sid, {
