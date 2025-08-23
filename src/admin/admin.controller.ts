@@ -5,8 +5,8 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt.guard';
-import { Roles, RolesGuard } from '../auth/roles.guard';
+import { JwtAuthGuard } from '../auth/guard/jwt.guard';
+import { Roles, RolesGuard } from '../auth/roles/roles.guard';
 import { OkResponseDto } from '../auth/dto/ok.dto';
 
 @ApiTags('Admin')

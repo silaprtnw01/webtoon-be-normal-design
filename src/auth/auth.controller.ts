@@ -25,7 +25,7 @@ import type { Request, Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import { JwtService } from '@nestjs/jwt';
 import { AppConfigService } from '../config/app-config.service';
-import { JwtAuthGuard } from './jwt.guard';
+import { JwtAuthGuard } from './guard/jwt.guard';
 import { TooManyResponseDto } from './dto/too-many.dto';
 import { AccessTokenResponseDto } from './dto/access-token.dto';
 import { OkResponseDto } from './dto/ok.dto';

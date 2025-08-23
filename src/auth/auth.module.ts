@@ -5,12 +5,12 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { UsersModule } from '../users/users.module';
 import { AppConfigModule } from '../config/app-config.module';
-import { JwtStrategy } from './jwt.strategy';
-import { RolesGuard } from './roles.guard';
+import { JwtStrategy } from './strategy/jwt.strategy';
+import { RolesGuard } from './roles/roles.guard';
 import { PrismaModule } from '../prisma/prisma.module';
 
 import { APP_GUARD } from '@nestjs/core';
-import { GoogleStrategy } from './google.strategy';
+import { GoogleStrategy } from './strategy/google.strategy';
 import { ThrottlerGuard } from '@nestjs/throttler';
 
 @Module({
