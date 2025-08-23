@@ -8,9 +8,10 @@ import { AppConfigModule } from '../config/app-config.module';
 import { JwtStrategy } from './jwt.strategy';
 import { RolesGuard } from './roles.guard';
 import { PrismaModule } from '../prisma/prisma.module';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+
 import { APP_GUARD } from '@nestjs/core';
 import { GoogleStrategy } from './google.strategy';
+import { ThrottlerGuard } from '@nestjs/throttler';
 
 @Module({
   imports: [
@@ -19,14 +20,12 @@ import { GoogleStrategy } from './google.strategy';
     AppConfigModule,
     PassportModule,
     JwtModule.register({}),
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 60 }]),
   ],
   providers: [
     AuthService,
     JwtStrategy,
     RolesGuard,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
-
     GoogleStrategy,
   ],
   controllers: [AuthController],

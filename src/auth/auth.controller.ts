@@ -16,10 +16,10 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import type { Request, Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
-// import { Roles } from './roles.guard';
 import { JwtService } from '@nestjs/jwt';
 import { AppConfigService } from '../config/app-config.service';
 import { JwtAuthGuard } from './jwt.guard';
+//import { Throttle } from '@nestjs/throttler';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -43,6 +43,7 @@ export class AuthController {
   }
 
   @Post('register')
+  //@Throttle({ default: { limit: 5, ttl: 60000 } })
   @HttpCode(201)
   async register(
     @Body() dto: RegisterDto,
@@ -64,6 +65,7 @@ export class AuthController {
   }
 
   @Post('login')
+  //@Throttle({ default: { limit: 10, ttl: 60000 } })
   @HttpCode(200)
   async login(
     @Body() dto: LoginDto,
@@ -81,6 +83,7 @@ export class AuthController {
 
   @Post('refresh')
   @ApiCookieAuth('refresh_token')
+  //@Throttle({ default: { limit: 20, ttl: 60000 } })
   @HttpCode(200)
   async refresh(
     @Req() req: Request,
