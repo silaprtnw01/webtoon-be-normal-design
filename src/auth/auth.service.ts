@@ -416,4 +416,35 @@ export class AuthService {
       },
     });
   }
+
+  async revokeOtherSessions(
+    userId: string,
+    currentSid: string,
+    client: { ip?: string; ua?: string },
+  ) {
+    const res = await this.prisma.session.updateMany({
+      where: { userId, id: { not: currentSid }, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    await this.prisma.auditLog.create({
+      data: {
+        userId,
+        sessionId: currentSid,
+        action: 'REVOKE_OTHERS',
+        ip: client.ip,
+        userAgent: client.ua,
+        meta: { revokedCount: res.count },
+      },
+    });
+    return { revokedCount: res.count };
+  }
+
+  async listProviders(userId: string) {
+    const rows = await this.prisma.accountProvider.findMany({
+      where: { userId },
+      select: { provider: true, providerId: true, createdAt: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    return rows;
+  }
 }
