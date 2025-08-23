@@ -1,7 +1,13 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { Roles, RolesGuard } from '../auth/roles.guard';
+import { OkResponseDto } from 'src/auth/dto/ok.dto';
 
 @ApiTags('Admin')
 @ApiBearerAuth()
@@ -10,6 +16,8 @@ import { Roles, RolesGuard } from '../auth/roles.guard';
 export class AdminController {
   @Get('ping')
   @Roles('admin')
+  @ApiOperation({ summary: 'Admin ping (RBAC: admin only)' })
+  @ApiOkResponse({ type: OkResponseDto })
   ping() {
     return { ok: true, role: 'admin' };
   }

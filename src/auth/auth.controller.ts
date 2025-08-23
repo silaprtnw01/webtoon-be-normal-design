@@ -10,7 +10,14 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import { ApiCookieAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCookieAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+  ApiTooManyRequestsResponse,
+} from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -19,6 +26,11 @@ import { AuthGuard } from '@nestjs/passport';
 import { JwtService } from '@nestjs/jwt';
 import { AppConfigService } from '../config/app-config.service';
 import { JwtAuthGuard } from './jwt.guard';
+import { TooManyResponseDto } from './dto/too-many.dto';
+import { AccessTokenResponseDto } from './dto/access-token.dto';
+import { OkResponseDto } from './dto/ok.dto';
+import { SessionsResponseDto } from './dto/session.dto';
+import { MeResponseDto } from './dto/me.dto';
 //import { Throttle } from '@nestjs/throttler';
 
 @ApiTags('Auth')
@@ -43,6 +55,16 @@ export class AuthController {
   }
 
   @Post('register')
+  @ApiOperation({
+    summary: 'Register with email/password',
+    description:
+      'สร้างผู้ใช้ใหม่และตั้ง **refresh token** ใน **HttpOnly cookie** ชื่อ `refresh_token`',
+  })
+  @ApiOkResponse({ type: AccessTokenResponseDto })
+  @ApiTooManyRequestsResponse({
+    type: TooManyResponseDto,
+    description: 'ถูกจำกัดอัตรา (เมื่อติดตั้ง/เปิด ThrottlerGuard)',
+  })
   //@Throttle({ default: { limit: 5, ttl: 60000 } })
   @HttpCode(201)
   async register(
@@ -65,6 +87,13 @@ export class AuthController {
   }
 
   @Post('login')
+  @ApiOperation({
+    summary: 'Login with email/password',
+    description:
+      'ออก **access token** (Bearer) และตั้ง **refresh cookie** (HttpOnly).',
+  })
+  @ApiOkResponse({ type: AccessTokenResponseDto })
+  @ApiTooManyRequestsResponse({ type: TooManyResponseDto })
   //@Throttle({ default: { limit: 10, ttl: 60000 } })
   @HttpCode(200)
   async login(
@@ -83,6 +112,13 @@ export class AuthController {
 
   @Post('refresh')
   @ApiCookieAuth('refresh_token')
+  @ApiOperation({
+    summary: 'Rotate refresh token',
+    description:
+      'อ่าน `refresh_token` จาก **HttpOnly cookie** → ออก access token ใหม่ + **หมุน refresh token** (rotation). ถ้าใช้ refresh เก่า → **reuse detection** → 401 และ revoke session.',
+  })
+  @ApiOkResponse({ type: AccessTokenResponseDto })
+  @ApiTooManyRequestsResponse({ type: TooManyResponseDto })
   //@Throttle({ default: { limit: 20, ttl: 60000 } })
   @HttpCode(200)
   async refresh(
@@ -100,6 +136,12 @@ export class AuthController {
 
   @Post('logout')
   @ApiCookieAuth('refresh_token')
+  @ApiOperation({
+    summary: 'Logout current session',
+    description:
+      'พยายาม revoke session จาก refresh cookie (best-effort) แล้วล้าง cookie ออก',
+  })
+  @ApiOkResponse({ type: OkResponseDto })
   @HttpCode(200)
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     // ถ้ามี refresh cookie → ใช้มันถอด sid ออก (best effort)
@@ -124,6 +166,13 @@ export class AuthController {
 
   @UseGuards(AuthGuard('jwt'))
   @Get('sessions')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'List sessions',
+    description:
+      'เรียกด้วย **access token** (Bearer). ใช้ดูและจัดการอุปกรณ์ที่ล็อกอินอยู่',
+  })
+  @ApiOkResponse({ type: SessionsResponseDto })
   async sessions(@Req() req: Request) {
     type AccessUser = { sub: string; roles?: string[] };
     const user = (req as any).user as AccessUser;
@@ -145,6 +194,9 @@ export class AuthController {
 
   @UseGuards(AuthGuard('jwt'))
   @Delete('sessions/:id')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Revoke a session' })
+  @ApiOkResponse({ type: OkResponseDto })
   async revoke(@Req() req: Request, @Param('id') id: string) {
     type AccessUser = { sub: string };
     const user = (req as any).user as AccessUser | undefined;
@@ -156,6 +208,9 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current user profile' })
+  @ApiOkResponse({ type: MeResponseDto })
   @Get('/me')
   async me(@Req() req: Request) {
     type AccessUser = { sub: string };
