@@ -13,5 +13,10 @@ export const envSchema = z.object({
   MINIO_BUCKET: z.string().default('webtoon'),
   CORS_ORIGIN: z.string().optional(),
   PUBLIC_BASE_URL: z.string().url().optional(),
+  ACCESS_TOKEN_SECRET: z.string().min(16),
+  REFRESH_TOKEN_SECRET: z.string().min(16),
+  ACCESS_TOKEN_TTL_SEC: z.coerce.number().int().positive().default(600),
+  REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
+  COOKIE_DOMAIN: z.string().optional(),
 });
 export type Env = z.infer<typeof envSchema>;

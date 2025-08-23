@@ -5,9 +5,18 @@ import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './health/health.module';
 import { AppConfigModule } from './config/app-config.module';
 import { StorageModule } from './storage/storage.module';
+import { UsersModule } from './users/users.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
-  imports: [PrismaModule, AppConfigModule, HealthModule, StorageModule],
+  imports: [
+    PrismaModule,
+    AppConfigModule,
+    HealthModule,
+    StorageModule,
+    UsersModule,
+    AuthModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

@@ -46,4 +46,15 @@ export class AppConfigService {
       bucket: this.env.MINIO_BUCKET,
     };
   }
+  get jwt() {
+    return {
+      accessSecret: this.env.ACCESS_TOKEN_SECRET,
+      refreshSecret: this.env.REFRESH_TOKEN_SECRET,
+      accessTtlSec: this.env.ACCESS_TOKEN_TTL_SEC,
+      refreshTtlDays: this.env.REFRESH_TOKEN_TTL_DAYS,
+    };
+  }
+  get cookieDomain() {
+    return this.env.COOKIE_DOMAIN;
+  }
 }
