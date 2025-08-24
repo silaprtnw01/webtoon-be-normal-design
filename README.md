@@ -5,6 +5,9 @@ Backend สำหรับ Webtoon/Content Platform ที่ใช้ NestJS 11
 ### คุณสมบัติเด่น
 
 - **Auth (JWT + Refresh Rotation)**: ลงทะเบียน/ล็อกอิน/รีเฟรช/ล็อกเอาต์, ตรวจจับ token reuse, จัดการ session ต่ออุปกรณ์
+- **OAuth (Google)**: เข้าสู่ระบบด้วย Google Account พร้อมการจัดการ account linking
+- **RBAC**: ระบบควบคุมสิทธิ์แบบ Role-Based Access Control (user/admin)
+- **Crawler System**: ระบบ crawl เนื้อหา webtoon อัตโนมัติด้วย BullMQ queue system
 - **Config แบบปลอดภัย**: ตรวจสอบตัวแปรแวดล้อมด้วย Zod ก่อนบูตระบบ
 - **Storage (S3/MinIO)**: ตรวจสุขภาพ bucket ด้วย HeadBucket
 - **Health Endpoints**: ตรวจ DB/Redis/MinIO + readiness + version
@@ -16,8 +19,10 @@ Backend สำหรับ Webtoon/Content Platform ที่ใช้ NestJS 11
 - **Runtime**: Node.js 22+, PNPM
 - **Framework**: NestJS 11 (Express)
 - **DB**: PostgreSQL (Prisma ORM)
-- **Cache/Queue**: Redis
+- **Cache/Queue**: Redis + BullMQ
 - **Object Storage**: MinIO (compatible S3)
+- **Web Scraping**: Cheerio, Got
+- **OAuth**: Passport (Google OAuth 2.0)
 - **Docs**: Swagger-UI
 
 ---
@@ -68,6 +73,22 @@ REFRESH_TOKEN_SECRET=change-this-to-a-strong-secret
 ACCESS_TOKEN_TTL_SEC=600
 REFRESH_TOKEN_TTL_DAYS=30
 
+# OAuth (Google - ตัวเลือก)
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+GOOGLE_CALLBACK_URL=http://localhost:3000/auth/google/callback
+OAUTH_ALLOW_SIGNUP=true
+
+# Admin (ตัวเลือก)
+ADMIN_EMAIL=admin@example.com
+
+# Crawler (ตัวเลือก)
+CRAWLER_ONE_MANGA_BASE=https://one-manga.com
+CRAWLER_CONCURRENCY=2
+CRAWLER_RATE_MAX=5
+CRAWLER_RATE_DURATION_MS=1000
+CRAWLER_USER_AGENT=WebtoonBot/0.1
+
 # Web
 CORS_ORIGIN=http://localhost:3000
 PUBLIC_BASE_URL=http://localhost:3000
@@ -115,10 +136,21 @@ pnpm start:dev
 
 ### Auth
 
+**Local Authentication**
+
 - `POST /auth/register` body: `{ email, password, displayName }` → ตอบกลับ `{ accessToken }` และตั้ง cookie `refresh_token`
 - `POST /auth/login` body: `{ email, password, deviceId? }` → ตอบกลับ `{ accessToken }` และตั้ง cookie `refresh_token`
 - `POST /auth/refresh` ใช้ cookie `refresh_token` เพื่อออกคู่ token ใหม่ (rotation)
 - `POST /auth/logout` ล็อกเอาต์และล้าง cookie
+
+**OAuth (Google)**
+
+- `GET /auth/google` เริ่ม OAuth flow (redirect ไป Google)
+- `GET /auth/google/callback` callback หลัง Google auth (auto redirect พร้อม cookie)
+- `GET /auth/providers` แสดงข้อมูล providers ที่ link กับ account
+
+**Session Management**
+
 - `GET /auth/me` ต้องส่ง Access Token (Bearer)
 - `GET /auth/sessions` ดู session ทั้งหมดของผู้ใช้ปัจจุบัน
 - `DELETE /auth/sessions/:id` ยกเลิก session เฉพาะเครื่อง
@@ -147,6 +179,35 @@ pnpm start:dev
   - สร้าง `slug` อัตโนมัติและรับประกันไม่ซ้ำ (เช่น `solo-leveling`, `solo-leveling-2`, ...)
   - ลบใช้รูปแบบ soft delete (`deletedAt`); endpoint สาธารณะจะไม่แสดงข้อมูลที่ถูกลบ
   - การ list ซีรีส์รองรับ cursor pagination; ใช้ `nextCursor` ที่ได้ไปเป็น `cursor` ในการเรียกครั้งถัดไป
+
+### Crawler (Admin Only)
+
+ระบบ crawl เนื้อหา webtoon อัตโนมัติด้วย BullMQ queue system รองรับ rate limiting และ retry mechanism
+
+**Main Endpoints**
+
+- `POST /crawler/series` body: `{ url }` → enqueue series crawling job (ต้องมี JWT + role: admin)
+- `GET /crawler/metrics` → ดูสถิติ queue (enqueued, processed, failed)
+
+**Operations (Admin)**
+
+- `GET /crawler/stats` → ดูสถิติ queue รายละเอียด (waiting, active, completed, failed, delayed)
+- `GET /crawler/jobs?state=waiting&start=0&end=49` → list jobs ตาม state
+- `GET /crawler/failed?start=0&end=49` → list failed jobs
+- `POST /crawler/retry/:id` → retry failed job
+- `DELETE /crawler/remove/:id` → remove job จาก queue
+
+**Hosts Management**
+
+- `/crawler/hosts/*` → จัดการ crawler hosts/adapters (ยังไม่เปิดใช้งาน)
+
+**พฤติกรรมสำคัญ**
+
+- รองรับ Madara-based webtoon sites (เช่น one-manga.com)
+- ใช้ BullMQ สำหรับ background processing พร้อม Redis storage
+- มี rate limiting และ retry mechanism แบบ exponential backoff
+- Crawl แบบ deep: Series → Chapters → Pages
+- ตรวจจับและป้องกันการ duplicate jobs ด้วย jobId
 
 ---
 
@@ -192,13 +253,32 @@ pnpm lint        # lint & fix
 
 ## โครงสร้างโค้ดหลัก (สั้นๆ)
 
-- `src/auth/*` โมดูล Auth (JWT, Guards, DTOs, Controller/Service)
+- `src/auth/*` โมดูล Auth (JWT, OAuth, Guards, DTOs, Controller/Service)
+- `src/admin/*` โมดูล Admin (RBAC endpoints, admin-only features)
 - `src/catalog/*` โมดูล Catalog (Series/Chapters/Pages API, DTOs, Service)
+- `src/crawler/*` โมดูล Crawler (BullMQ workers, adapters, ops endpoints)
 - `src/config/*` โมดูล Config และ AppInfo (ตรวจ env ด้วย Zod)
 - `src/health/*` Health/Readiness/Version endpoints
 - `src/prisma/*` Prisma service/module
 - `src/storage/*` Storage service (S3/MinIO)
 - `src/users/*` Users service/module
+
+### RBAC (Role-Based Access Control)
+
+ระบบแบ่งสิทธิ์เป็น 2 ระดับ:
+
+- **user**: ผู้ใช้ทั่วไป (เข้าถึง public APIs, จัดการ session ตัวเองได้)
+- **admin**: ผู้ดูแลระบบ (สามารถจัดการ catalog, crawler, ดู admin endpoints)
+
+**Admin Endpoints**
+
+- `GET /admin/ping` → test admin access (ต้องมี JWT + role: admin)
+
+**การกำหนดสิทธิ์**
+
+- ผู้ใช้ใหม่จะได้ role 'user' โดยอัตโนมัติ
+- การเปลี่ยน role เป็น admin ต้องทำผ่าน database โดยตรง
+- ใช้ `@Roles('admin')` decorator ร่วมกับ `RolesGuard` ในการควบคุมสิทธิ์
 
 ---
 
