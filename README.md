@@ -129,6 +129,25 @@ pnpm start:dev
 - Refresh Token: เก็บใน HttpOnly cookie ชื่อ `refresh_token`
 - มีการตรวจจับการ reuse ของ refresh token และจะ revoke session ทันที
 
+### Catalog
+
+- **Public**
+  - `GET /catalog/series?take=20&cursor=<id>&publishedOnly=true` รายการซีรีส์แบบ cursor-based; คืน `{ items, nextCursor }` (ค่าเริ่มต้น `publishedOnly=true`)
+  - `GET /catalog/series/:slug` ดูรายละเอียดซีรีส์แบบเผยแพร่เท่านั้น
+  - `GET /catalog/series/:seriesId/chapters` รายการตอนของซีรีส์ (เฉพาะที่เผยแพร่)
+  - `GET /catalog/chapters/:chapterId/pages` รายการหน้าของตอน
+
+- **Admin (ต้องมี JWT + role: admin)**
+  - Series: `POST /catalog/series`, `PATCH /catalog/series/:id`, `DELETE /catalog/series/:id`
+  - Chapters: `POST /catalog/series/:seriesId/chapters`, `PATCH /catalog/chapters/:id`, `DELETE /catalog/chapters/:id`
+  - Pages: `POST /catalog/chapters/:chapterId/pages`, `PATCH /catalog/pages/:id`, `DELETE /catalog/pages/:id`
+
+- **พฤติกรรมสำคัญ**
+  - Series/Chapter รองรับสถานะ `draft | published`; endpoint สาธารณะจะแสดงเฉพาะที่ `published`
+  - สร้าง `slug` อัตโนมัติและรับประกันไม่ซ้ำ (เช่น `solo-leveling`, `solo-leveling-2`, ...)
+  - ลบใช้รูปแบบ soft delete (`deletedAt`); endpoint สาธารณะจะไม่แสดงข้อมูลที่ถูกลบ
+  - การ list ซีรีส์รองรับ cursor pagination; ใช้ `nextCursor` ที่ได้ไปเป็น `cursor` ในการเรียกครั้งถัดไป
+
 ---
 
 ## การตั้งค่า CORS และ Cookies
@@ -154,6 +173,11 @@ pnpm test:cov    # coverage
 pnpm lint        # lint & fix
 ```
 
+หมายเหตุ e2e:
+
+- เพื่อความแน่นอนของชุดทดสอบ Catalog มีการล้างตาราง `Series/Chapter/Page` ก่อนเริ่ม (`test/catalog.e2e-spec.ts`)
+- หากทดสอบด้วยฐานข้อมูลที่ใช้ร่วมกับงานจริง แนะนำให้ใช้ฐานข้อมูลเฉพาะสำหรับ e2e
+
 ---
 
 ## แก้ปัญหาที่พบบ่อย
@@ -169,6 +193,7 @@ pnpm lint        # lint & fix
 ## โครงสร้างโค้ดหลัก (สั้นๆ)
 
 - `src/auth/*` โมดูล Auth (JWT, Guards, DTOs, Controller/Service)
+- `src/catalog/*` โมดูล Catalog (Series/Chapters/Pages API, DTOs, Service)
 - `src/config/*` โมดูล Config และ AppInfo (ตรวจ env ด้วย Zod)
 - `src/health/*` Health/Readiness/Version endpoints
 - `src/prisma/*` Prisma service/module
