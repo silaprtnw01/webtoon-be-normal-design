@@ -131,3 +131,64 @@ model UserEntitlement {
   @@unique([userId, planId, active])
   @@index([planId])
 }
+
+enum PublishStatus {
+  draft
+  published
+}
+
+model Series {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title       String
+  slug        String        @unique
+  description String?
+  status      PublishStatus @default(draft)
+  createdBy   String?       @db.Uuid
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  deletedAt   DateTime?
+
+  chapters Chapter[]
+
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model Chapter {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  seriesId    String        @db.Uuid
+  number      Int
+  title       String?
+  slug        String?
+  status      PublishStatus @default(draft)
+  publishedAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  deletedAt   DateTime?
+
+  series Series @relation(fields: [seriesId], references: [id])
+  pages  Page[]
+
+  @@unique([seriesId, number])
+  @@index([seriesId])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model Page {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  chapterId String    @db.Uuid
+  index     Int
+  imageKey  String
+  width     Int?
+  height    Int?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  chapter Chapter @relation(fields: [chapterId], references: [id])
+
+  @@unique([chapterId, index])
+  @@index([chapterId])
+  @@index([deletedAt])
+}

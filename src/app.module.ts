@@ -12,6 +12,8 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { AppConfigService } from './config/app-config.service';
 import { ThrottlerStorageRedisService } from 'nestjs-throttler-storage-redis';
 import { Redis } from 'ioredis';
+import { CatalogModule } from './catalog/catalog.module';
+import { CatalogService } from './catalog/catalog.service';
 
 @Module({
   imports: [
@@ -29,8 +31,9 @@ import { Redis } from 'ioredis';
         storage: new ThrottlerStorageRedisService(new Redis(cfg.redisUrl)),
       }),
     }),
+    CatalogModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, CatalogService],
 })
 export class AppModule {}
