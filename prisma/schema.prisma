@@ -192,3 +192,17 @@ model Page {
   @@index([chapterId])
   @@index([deletedAt])
 }
+
+model ExternalRef {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  source    String // e.g. "one-manga"
+  entity    String // "series" | "chapter"
+  sourceKey String // unique key เช่น seriesSlug หรือ chapterSlug (slug-141)
+  seriesId  String?  @db.Uuid
+  chapterId String?  @db.Uuid
+  createdAt DateTime @default(now())
+
+  @@unique([source, entity, sourceKey])
+  @@index([seriesId])
+  @@index([chapterId])
+}

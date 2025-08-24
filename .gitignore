@@ -3,6 +3,9 @@
 /node_modules
 /build
 
+# cookies
+cookies.txt
+
 # Logs
 logs
 *.log
