@@ -36,5 +36,12 @@ export const envSchema = z.object({
 
   // Admin
   ADMIN_EMAIL: z.string().email({ error: 'Invalid email' }).optional(),
+
+  // Crawler
+  CRAWLER_ONE_MANGA_BASE: z.string().url().default('https://one-manga.com'),
+  CRAWLER_CONCURRENCY: z.coerce.number().default(2),
+  CRAWLER_RATE_MAX: z.coerce.number().default(5),
+  CRAWLER_RATE_DURATION_MS: z.coerce.number().default(1000),
+  CRAWLER_USER_AGENT: z.string().default('WebtoonBot/0.1'),
 });
 export type Env = z.infer<typeof envSchema>;
