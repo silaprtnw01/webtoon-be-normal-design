@@ -81,4 +81,17 @@ export class AppConfigService {
   get adminEmail() {
     return this.env.ADMIN_EMAIL;
   }
+
+  // Crawler
+  get crawler() {
+    return {
+      base: this.env.CRAWLER_ONE_MANGA_BASE,
+      concurrency: this.env.CRAWLER_CONCURRENCY,
+      rate: {
+        max: this.env.CRAWLER_RATE_MAX,
+        duration: this.env.CRAWLER_RATE_DURATION_MS,
+      },
+      ua: this.env.CRAWLER_USER_AGENT,
+    };
+  }
 }
