@@ -20,9 +20,10 @@ import {
 import { CatalogService } from '../catalog.service';
 import { CreateSeriesDto, UpdateSeriesDto } from '../dto/series.dto';
 import { CursorQueryDto } from '../dto/query.dto';
-import { JwtAuthGuard } from 'src/auth/guard/jwt.guard';
-import { Roles } from 'src/auth/guard/roles.guard';
+import { JwtAuthGuard } from '../../auth/guard/jwt.guard';
+import { Roles } from '../../auth/guard/roles.guard';
 import type { Request } from 'express';
+import { RolesGuard } from '../../auth/roles/roles.guard';
 
 @ApiTags('Catalog - Series')
 @Controller('catalog/series')
@@ -53,7 +54,7 @@ export class SeriesController {
   }
 
   // Admin: create/update/delete
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
   @Post()
   @Roles('admin')
@@ -67,7 +68,7 @@ export class SeriesController {
     return this.srv.createSeries({ ...dto, createdBy: user.sub });
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
   @Patch(':id')
   @Roles('admin')
@@ -75,7 +76,7 @@ export class SeriesController {
     return this.srv.updateSeries(id, dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
   @Delete(':id')
   @Roles('admin')

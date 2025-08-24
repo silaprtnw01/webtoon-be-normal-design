@@ -12,8 +12,8 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CatalogService } from '../catalog.service';
 import { CreatePageDto, UpdatePageDto } from '../dto/page.dto';
-import { JwtAuthGuard } from 'src/auth/guard/jwt.guard';
-import { Roles } from 'src/auth/roles/roles.guard';
+import { JwtAuthGuard } from '../../auth/guard/jwt.guard';
+import { Roles, RolesGuard } from '../../auth/roles/roles.guard';
 
 @ApiTags('Catalog - Pages')
 @Controller()
@@ -28,7 +28,7 @@ export class PagesController {
   }
 
   // Admin CRUD
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
   @Post('catalog/chapters/:chapterId/pages')
   @Roles('admin')
@@ -40,7 +40,7 @@ export class PagesController {
     return this.srv.createPage(chapterId, dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
   @Patch('catalog/pages/:id')
   @Roles('admin')
@@ -48,7 +48,7 @@ export class PagesController {
     return this.srv.updatePage(id, dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
   @Delete('catalog/pages/:id')
   @Roles('admin')

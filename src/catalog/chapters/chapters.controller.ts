@@ -12,8 +12,8 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CatalogService } from '../catalog.service';
 import { CreateChapterDto, UpdateChapterDto } from '../dto/chapter.dto';
-import { JwtAuthGuard } from 'src/auth/guard/jwt.guard';
-import { Roles } from 'src/auth/roles/roles.guard';
+import { JwtAuthGuard } from '../../auth/guard/jwt.guard';
+import { Roles, RolesGuard } from '../../auth/roles/roles.guard';
 
 @ApiTags('Catalog - Chapters')
 @Controller()
@@ -31,7 +31,7 @@ export class ChaptersController {
   }
 
   // Admin: create/update/delete
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
   @Post('catalog/series/:seriesId/chapters')
   @Roles('admin')
@@ -43,7 +43,7 @@ export class ChaptersController {
     return this.srv.createChapter(seriesId, dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
   @Patch('catalog/chapters/:id')
   @Roles('admin')
@@ -51,7 +51,7 @@ export class ChaptersController {
     return this.srv.updateChapter(id, dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
   @Delete('catalog/chapters/:id')
   @Roles('admin')
