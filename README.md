@@ -251,17 +251,132 @@ pnpm lint        # lint & fix
 
 ---
 
-## โครงสร้างโค้ดหลัก (สั้นๆ)
+## โครงสร้างโฟลเดอร์
 
-- `src/auth/*` โมดูล Auth (JWT, OAuth, Guards, DTOs, Controller/Service)
-- `src/admin/*` โมดูล Admin (RBAC endpoints, admin-only features)
-- `src/catalog/*` โมดูล Catalog (Series/Chapters/Pages API, DTOs, Service)
-- `src/crawler/*` โมดูล Crawler (BullMQ workers, adapters, ops endpoints)
-- `src/config/*` โมดูล Config และ AppInfo (ตรวจ env ด้วย Zod)
-- `src/health/*` Health/Readiness/Version endpoints
-- `src/prisma/*` Prisma service/module
-- `src/storage/*` Storage service (S3/MinIO)
-- `src/users/*` Users service/module
+```
+webtoon-be-normal-design/
+├── docker-compose.yml           # Docker services (PostgreSQL, Redis, MinIO)
+├── package.json                 # Dependencies และ scripts
+├── pnpm-lock.yaml              # Package lock file
+├── nest-cli.json               # NestJS CLI config
+├── eslint.config.mjs           # ESLint configuration
+├── tsconfig.json               # TypeScript config
+├── tsconfig.build.json         # Build-specific TypeScript config
+├── README.md                   # เอกสารนี้
+│
+├── prisma/                     # Database schema และ migrations
+│   ├── schema.prisma           # Prisma schema definition
+│   ├── seed.ts                 # Database seeding script
+│   └── migrations/             # Database migration files
+│       ├── 20250816122633_init_extensions/
+│       ├── 20250816123841_add_user_schema/
+│       ├── 20250823121211_catalog_phase2/
+│       ├── 20250824103841_crawler_external_ref/
+│       ├── 20250824110919_add_delete_cuscade/
+│       ├── 20250824113158_add_chapter_description/
+│       ├── 20250824113342_delete/
+│       └── migration_lock.toml
+│
+├── src/                        # Source code หลัก
+│   ├── main.ts                 # Application entry point
+│   ├── app.module.ts           # Root module
+│   ├── app.controller.ts       # Root controller
+│   ├── app.service.ts          # Root service
+│   │
+│   ├── auth/                   # 🔐 Authentication & Authorization
+│   │   ├── auth.controller.ts  # Auth endpoints (login, register, OAuth)
+│   │   ├── auth.service.ts     # Auth business logic
+│   │   ├── auth.module.ts      # Auth module definition
+│   │   ├── dto/                # Data Transfer Objects
+│   │   │   ├── access-token.dto.ts
+│   │   │   ├── login.dto.ts
+│   │   │   ├── register.dto.ts
+│   │   │   ├── session.dto.ts
+│   │   │   └── ...
+│   │   ├── guard/              # Route guards
+│   │   │   ├── jwt.guard.ts
+│   │   │   └── roles.guard.ts
+│   │   ├── roles/              # RBAC decorators และ guards
+│   │   │   ├── roles.decorator.ts
+│   │   │   └── roles.guard.ts
+│   │   └── strategy/           # Passport strategies
+│   │       ├── jwt.strategy.ts
+│   │       └── google.strategy.ts
+│   │
+│   ├── admin/                  # 👨‍💼 Admin-only features
+│   │   ├── admin.controller.ts # Admin endpoints
+│   │   └── admin.module.ts     # Admin module
+│   │
+│   ├── catalog/                # 📚 Content management (Series, Chapters, Pages)
+│   │   ├── catalog.service.ts  # Catalog business logic
+│   │   ├── catalog.module.ts   # Catalog module
+│   │   ├── dto/                # DTOs for catalog entities
+│   │   │   ├── series.dto.ts
+│   │   │   ├── chapter.dto.ts
+│   │   │   ├── page.dto.ts
+│   │   │   └── query.dto.ts
+│   │   ├── series/             # Series management
+│   │   │   └── series.controller.ts
+│   │   ├── chapters/           # Chapter management
+│   │   │   └── chapters.controller.ts
+│   │   └── pages/              # Page management
+│   │       └── pages.controller.ts
+│   │
+│   ├── crawler/                # 🕷️ Web scraping system
+│   │   ├── crawler.controller.ts # Crawler endpoints
+│   │   ├── crawler.service.ts  # Crawler logic + BullMQ workers
+│   │   ├── crawler.module.ts   # Crawler module
+│   │   ├── metrics.service.ts  # Crawler metrics
+│   │   ├── dto/                # Crawler DTOs
+│   │   │   ├── seed.dto.ts
+│   │   │   └── series-url.dto.ts
+│   │   ├── adapters/           # Site-specific crawling adapters
+│   │   │   └── madara.adapter.ts
+│   │   ├── hosts/              # Host management
+│   │   │   └── hosts.controller.ts
+│   │   └── ops/                # Operations (queue management)
+│   │       └── ops.controller.ts
+│   │
+│   ├── config/                 # ⚙️ Configuration management
+│   │   ├── app-config.service.ts # Configuration service
+│   │   ├── app-config.module.ts  # Config module
+│   │   ├── app-info.service.ts   # App info service
+│   │   └── config.schema.ts      # Zod validation schema
+│   │
+│   ├── health/                 # ❤️ Health check endpoints
+│   │   ├── health.controller.ts # Health endpoints
+│   │   ├── health.module.ts    # Health module
+│   │   └── dto/                # Health DTOs
+│   │       ├── health.dto.ts
+│   │       └── version.dto.ts
+│   │
+│   ├── prisma/                 # 🗄️ Database service
+│   │   ├── prisma.service.ts   # Prisma client service
+│   │   └── prisma.module.ts    # Prisma module
+│   │
+│   ├── storage/                # 📦 Object storage (S3/MinIO)
+│   │   ├── storage.service.ts  # Storage operations
+│   │   └── storage.module.ts   # Storage module
+│   │
+│   ├── users/                  # 👤 User management
+│   │   ├── users.service.ts    # User operations
+│   │   └── users.module.ts     # Users module
+│   │
+│   └── common/                 # 🔧 Shared utilities
+│       └── dto/                # Common DTOs
+│           └── too-many.dto/
+│               └── too-many.dto.ts
+│
+└── test/                       # 🧪 Test files
+    ├── app.e2e-spec.ts        # Main app E2E tests
+    ├── auth.e2e-spec.ts       # Auth E2E tests
+    ├── catalog.e2e-spec.ts    # Catalog E2E tests
+    ├── health.e2e-spec.ts     # Health E2E tests
+    ├── rbac.e2e-spec.ts       # RBAC E2E tests
+    ├── security.e2e-spec.ts   # Security E2E tests
+    ├── rate-limit..ts         # Rate limiting tests
+    └── jest-e2e.json          # Jest E2E configuration
+```
 
 ### RBAC (Role-Based Access Control)
 
