@@ -5,6 +5,7 @@ import got from 'got';
 import { PrismaService } from '../prisma/prisma.service';
 import { AppConfigService } from '../config/app-config.service';
 import { MadaraAdapter } from './adapters/madara.adapter';
+import { Job } from 'bullmq';
 
 type JobData =
   | { type: 'SERIES_PAGE'; url: string }
@@ -35,6 +36,64 @@ export class CrawlerService {
         removeOnFail: 5000,
       } as JobsOptions,
     });
+  }
+
+  // ---- Queue ops ----
+  async jobStats() {
+    return this.queue.getJobCounts(
+      'waiting',
+      'active',
+      'delayed',
+      'completed',
+      'failed',
+      'paused',
+    );
+  }
+
+  async listJobs(
+    state: 'waiting' | 'active' | 'completed' | 'failed' | 'delayed',
+    start = 0,
+    end = 49,
+  ) {
+    // BullMQ: getJobs accepts array of states
+    const jobs = await this.queue.getJobs([state], start, end);
+    return jobs.map((j) => this.toJobView(j));
+  }
+
+  async listFailed(start = 0, end = 49) {
+    const jobs = await this.queue.getJobs(['failed'], start, end);
+    return jobs.map((j) => this.toJobView(j));
+  }
+
+  async retryJob(id: string) {
+    const job = await this.queue.getJob(id);
+    if (!job) throw new Error('job_not_found');
+    // ถ้าเป็น failed → retry, ถ้ารอ/ทำงานอยู่จะ throw
+    await job.retry();
+    return { ok: true };
+  }
+
+  async removeJob(id: string) {
+    const job = await this.queue.getJob(id);
+    if (!job) throw new Error('job_not_found');
+    await job.remove();
+    return { ok: true };
+  }
+
+  private toJobView(j: Job | null) {
+    if (!j) return null;
+    const err = (j as any).failedReason || (j as any).stacktrace?.[0];
+    return {
+      id: j.id,
+      name: j.name,
+      state: j['state'],
+      attemptsMade: j.attemptsMade,
+      timestamp: j.timestamp,
+      processedOn: j.processedOn,
+      finishedOn: j.finishedOn,
+      data: j.data,
+      failedReason: err ?? null,
+    };
   }
 
   async startWorker() {
