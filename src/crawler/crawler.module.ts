@@ -4,11 +4,13 @@ import { CrawlerController } from './crawler.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AppConfigModule } from '../config/app-config.module';
 import { CrawlerOpsController } from './ops/ops.controller';
+import { MetricsService } from './metrics.service';
+import { HostsController } from './hosts/hosts.controller';
 
 @Module({
   imports: [PrismaModule, AppConfigModule],
-  providers: [CrawlerService, Logger],
-  controllers: [CrawlerController, CrawlerOpsController],
+  providers: [CrawlerService, Logger, MetricsService],
+  controllers: [CrawlerController, CrawlerOpsController, HostsController],
 })
 export class CrawlerModule implements OnModuleInit {
   constructor(private readonly svc: CrawlerService) {}
